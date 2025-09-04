@@ -1,15 +1,28 @@
-FROM node:18.20.6
+FROM node:18.20.6-slim
 
-# Upgrade Debian system packages to get latest security fixes
-RUN apt-get update && apt-get dist-upgrade -y && rm -rf /var/lib/apt/lists/*
+# Set working directory
+WORKDIR /usr/src/app
 
-# Copy app files
-COPY graphserver.js .
-COPY package.json .
-COPY UScities.json .
+# Install security updates & any needed build tools
+RUN apt-get update && apt-get dist-upgrade -y \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates curl git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Node dependencies
-RUN npm install
+# Upgrade npm to the version you want
+RUN npm install -g npm@9.1.3
 
-EXPOSE 4000
-CMD ["node", "graphserver.js"]
+# Copy only package files first (better Docker caching)
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install --production
+
+# Copy the rest of the app
+COPY . .
+
+# Expose app port
+EXPOSE 8080
+
+# Start the app
+CMD ["node", "index.js"]
